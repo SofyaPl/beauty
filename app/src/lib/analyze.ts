@@ -1,6 +1,6 @@
 import { GROUPS, groupWeight, type Form, type Group, type Zone } from '../data/dictionary'
 import { parseInci, type Ingredient, type ParseResult } from './inci'
-import type { Product, Profile, StopRule } from './types'
+import { productTitle, type Product, type Profile, type StopRule } from './types'
 
 export interface GroupHit {
   group: Group
@@ -116,7 +116,7 @@ export function analyze(input: string, opts: AnalyzeOpts): Analysis {
   if (baseline?.inci && summary.level !== 'unclear') {
     const base = analyze(baseline.inci, { zone, form, profile })
     if (base.level !== 'unclear') {
-      comparison = compareFlags(flags, base.flags, baseline.name)
+      comparison = compareFlags(flags, base.flags, productTitle(baseline))
     }
   }
 

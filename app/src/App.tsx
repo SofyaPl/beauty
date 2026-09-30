@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { FORM_ORDER, FORMS, ZONE_ORDER, ZONES, type Form, type Zone } from './data/dictionary'
 import { analyze, type Analysis } from './lib/analyze'
 import { initStorage, isDiskConnected, saveData } from './lib/storage'
-import { emptyData, inferForm, type AppData } from './lib/types'
+import { emptyData, inferForm, productTitle, type AppData } from './lib/types'
 import { ResultView } from './components/ResultView'
 import { Settings } from './components/Settings'
 import { Shelf } from './components/Shelf'
@@ -186,19 +186,14 @@ export default function App() {
                 <option value="">Не сравнивать</option>
                 {peers.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {productTitle(p)}
                   </option>
                 ))}
               </select>
               {peers.length === 0 && otherForm.length > 0 && (
                 <p className="note">
                   С этой формой на полке пусто. Они на другой стороне переключателя:{' '}
-                  {otherForm.map((p) => p.name).join(', ')}.
-                </p>
-              )}
-              {zone === 'feet' && form === 'leave' && (
-                <p className="note">
-                  MEDLINE «крем для ног» — в зоне Тело (голени и руки), не подошвы.
+                  {otherForm.map((p) => productTitle(p)).join(', ')}.
                 </p>
               )}
             </div>

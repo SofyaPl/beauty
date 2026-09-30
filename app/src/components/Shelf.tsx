@@ -4,6 +4,7 @@ import {
   ERA_LABEL,
   STATUS_LABEL,
   inferForm,
+  productTitle,
   type AppData,
   type Product,
   type ProductEra,
@@ -14,10 +15,6 @@ const STATUSES = Object.keys(STATUS_LABEL) as ProductStatus[]
 
 function stamp(): string {
   return new Date().toISOString()
-}
-
-function title(product: Product): string {
-  return product.brand ? `${product.brand} — ${product.name}` : product.name
 }
 
 function Card({
@@ -33,7 +30,7 @@ function Card({
   return (
     <article className="product" data-status={product.status}>
       <button type="button" className="product-head" onClick={() => setOpen((v) => !v)}>
-        <span className="product-name">{title(product)}</span>
+        <span className="product-name">{productTitle(product)}</span>
         <span className="product-meta">
           {ZONES[product.zone]} · {FORMS[inferForm(product)]}
           {product.category ? ` · ${product.category}` : ''}
@@ -252,7 +249,7 @@ export function Shelf({
                   .filter((p) => p.zone === z)
                   .map((p) => (
                     <li key={p.id}>
-                      {title(p)}
+                      {productTitle(p)}
                       <span className="pos">
                         {' '}
                         · {FORMS[inferForm(p)].toLowerCase()}

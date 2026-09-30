@@ -64,6 +64,11 @@ export interface Product {
   updatedAt: string
 }
 
+/** Как показывать средство везде: полка, проверка, сравнение. */
+export function productTitle(product: Product): string {
+  return product.brand ? `${product.brand} — ${product.name}` : product.name
+}
+
 export interface Check {
   id: string
   createdAt: string

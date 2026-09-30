@@ -35,6 +35,8 @@ export default function App() {
   const zoneProducts = data.products.filter(
     (p) => p.era !== 'past' && p.zone === zone && p.inci.trim(),
   )
+  const peers = zoneProducts.filter((p) => inferForm(p) === form)
+  const otherForm = zoneProducts.filter((p) => inferForm(p) !== form)
 
   useEffect(() => {
     const inZone = data.products.filter(
@@ -45,21 +47,19 @@ export default function App() {
     const nextForm: Form = leaveN >= rinseN ? 'leave' : 'rinse'
     setForm(nextForm)
     const sameForm = inZone.filter((p) => inferForm(p) === nextForm)
-    const prefer = sameForm.find((p) => p.status === 'replace') ?? sameForm[0] ?? inZone[0]
+    const prefer = sameForm.find((p) => p.status === 'replace') ?? sameForm[0]
     setCompareId(prefer?.id ?? '')
   }, [zone, data.products])
 
-  const check = () => {
-    const baseline = zoneProducts.find((p) => p.id === compareId)
+  const check = () =>
     setResult(
       analyze(input, {
         zone,
-        form: baseline ? inferForm(baseline) : form,
+        form,
         profile: data.profile,
-        baseline,
+        baseline: peers.find((p) => p.id === compareId),
       }),
     )
-  }
 
   const pasteFromClipboard = async () => {
     try {
@@ -181,32 +181,25 @@ export default function App() {
               <select
                 id="compare"
                 value={compareId}
-                onChange={(e) => {
-                  const id = e.target.value
-                  setCompareId(id)
-                  const picked = zoneProducts.find((p) => p.id === id)
-                  if (picked) setForm(inferForm(picked))
-                }}
+                onChange={(e) => setCompareId(e.target.value)}
               >
                 <option value="">Не сравнивать</option>
-                {zoneProducts.map((p) => (
+                {peers.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} — {FORMS[inferForm(p)].toLowerCase()}
+                    {p.name}
                   </option>
                 ))}
               </select>
-              <p className="note">
-                В списке все текущие средства этой зоны. Если выбрать бальзам, форма
-                станет смываемой; если крем — несмываемой.
-              </p>
-              {zone === 'feet' && (
+              {peers.length === 0 && otherForm.length > 0 && (
                 <p className="note">
-                  MEDLINE «крем для ног» стоит в зоне Тело: это голени и руки, не
-                  подошвы. Для ступней здесь EpilProfi и НАНОПЯТКИ.
+                  С этой формой на полке пусто. Они на другой стороне переключателя:{' '}
+                  {otherForm.map((p) => p.name).join(', ')}.
                 </p>
               )}
-              {zoneProducts.length === 0 && (
-                <p className="note">На полке пока нет средств с этой зоной.</p>
+              {zone === 'feet' && form === 'leave' && (
+                <p className="note">
+                  MEDLINE «крем для ног» — в зоне Тело (голени и руки), не подошвы.
+                </p>
               )}
             </div>
 

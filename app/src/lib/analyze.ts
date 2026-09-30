@@ -53,11 +53,13 @@ export function analyze(input: string, zone: Zone, profile: Profile): Analysis {
     hits.push({ group, items, relevantToZone, stopRule })
   }
 
-  const watchHits = profile.watch.flatMap((w) =>
-    parse.ingredients
-      .filter((ing) => ing.key === w.key)
-      .map((item) => ({ item, reason: w.reason })),
-  )
+  const watchHits = profile.watch
+    .filter((w) => !w.zones?.length || w.zones.includes(zone))
+    .flatMap((w) =>
+      parse.ingredients
+        .filter((ing) => ing.key === w.key)
+        .map((item) => ({ item, reason: w.reason })),
+    )
 
   const unmatched = parse.ingredients.filter((ing) => !matchedKeys.has(ing.key))
 

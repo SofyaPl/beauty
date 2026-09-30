@@ -11,6 +11,8 @@ export interface StopRule {
 export interface WatchItem {
   key: string
   reason: string
+  /** Зоны, где наблюдение действует. Пусто — значит везде. */
+  zones?: Zone[]
 }
 
 export interface Profile {

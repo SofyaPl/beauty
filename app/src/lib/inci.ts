@@ -113,10 +113,13 @@ function assessList(input: string, list: Ingredient[]): string[] {
     warnings.push(`Встретилось «${marker}» — это не ингредиент. За такой формулировкой прячут эмульгаторы, консерванты и отдушку.`)
   }
 
-  const cyrillicShare =
-    list.filter((i) => CYRILLIC.test(i.display)).length / list.length
-  if (cyrillicShare > 0.5) {
-    warnings.push('Состав написан по-русски. Распознано будет только то, что есть в таблице соответствий — часть ингредиентов может быть не учтена.')
+  // Русский сам по себе не беда: если всё нашлось в таблице соответствий,
+  // список разобран не хуже латинского. Проблема — только неопознанные слова.
+  const unknownRu = list.filter((i) => CYRILLIC.test(i.display) && !i.translated)
+  if (unknownRu.length > 0) {
+    warnings.push(
+      `Русские названия, которых нет в таблице соответствий: ${unknownRu.map((i) => i.display).join(', ')}. По ним проверка ничего не скажет.`,
+    )
   }
 
   return warnings

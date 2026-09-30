@@ -1,6 +1,14 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { GROUPS, ZONE_ORDER, ZONES, type Zone } from '../data/dictionary'
-import { exportFile, importFile, localAdapter } from '../lib/storage'
+import {
+  connectExistingFile,
+  connectNewFile,
+  disconnectDisk,
+  exportFile,
+  importFile,
+  isDiskConnected,
+  isDiskSupported,
+} from '../lib/storage'
 import type { AppData, StopRule } from '../lib/types'
 
 const ZONE_IDS = ZONE_ORDER
@@ -21,11 +29,16 @@ function toggleZone(rules: StopRule[], groupId: string, zone: Zone): StopRule[] 
 export function Settings({
   data,
   onChange,
+  diskOn,
+  onDisk,
 }: {
   data: AppData
   onChange: (next: AppData) => void
+  diskOn: boolean
+  onDisk: (connected: boolean) => void
 }) {
   const fileInput = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
 
   const setStopList = (stopList: StopRule[]) =>
     onChange({ ...data, profile: { ...data.profile, stopList } })
@@ -39,13 +52,28 @@ export function Settings({
     }
   }
 
+  const run = async (fn: () => Promise<AppData | void>, connected?: boolean) => {
+    setBusy(true)
+    try {
+      const next = await fn()
+      if (next) onChange(next)
+      if (connected !== undefined) onDisk(connected)
+      else onDisk(isDiskConnected())
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return
+      alert(e instanceof Error ? e.message : 'Не получилось')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <>
       <section className="card">
         <h3>Стоп-лист</h3>
         <p className="note" style={{ marginTop: 0 }}>
-          Отметь, для каких зон группа считается запретом. Требования у зон
-          разные: то, что исключено для волос, для лица может быть уместно.
+          Отметь, для каких зон группа считается запретом. Эти галочки живут в
+          файле данных, не в GitHub.
         </p>
         {GROUPS.filter((g) => g.kind === 'watch').map((g) => {
           const rule = data.profile.stopList.find((r) => r.groupId === g.id)
@@ -71,20 +99,68 @@ export function Settings({
 
       <section className="card">
         <h3>Где лежат данные</h3>
-        <p style={{ marginTop: 0 }}>
-          <strong>{localAdapter.title}.</strong> {localAdapter.description}
-        </p>
+        {diskOn ? (
+          <p style={{ marginTop: 0 }}>
+            <strong>Файл на Диске подключён.</strong> Правки пишутся в{' '}
+            <code>полка-данные.json</code> в папке проекта. Яндекс.Диск сам
+            развозит его на другие компьютеры, где установлен клиент.
+          </p>
+        ) : (
+          <p style={{ marginTop: 0 }}>
+            Сейчас только память этого браузера. Чтобы полка и стоп-лист жили на
+            Диске, один раз открой файл <code>полка-данные.json</code> из папки
+            проекта.
+          </p>
+        )}
         <p className="note">
-          Хранилище подключаемое. Если надоест копировать файл руками, следующим
-          шагом будет открыть JSON прямо из этой папки на Диске — браузер умеет
-          писать в выбранный файл, без сервера и без Google-таблицы.
+          Публичную ссылку Яндекс.Диска в сайт вшивать не стоит: исходники
+          приложения на GitHub открытые, ссылку оттуда кто угодно скопирует. И
+          по такой ссылке файл можно только скачать, а не сохранить полку обратно.
+          Туннеля у Диска нет — есть либо публичная ссылка, либо вход в аккаунт.
+          Выбор файла на компьютере как раз использует уже синхронизируемую папку
+          без публикации.
         </p>
-        <div className="row">
+        {isDiskSupported() ? (
+          <div className="row">
+            <button
+              className="primary"
+              type="button"
+              disabled={busy}
+              onClick={() => void run(connectExistingFile, true)}
+            >
+              Открыть файл на Диске
+            </button>
+            <button
+              className="ghost"
+              type="button"
+              disabled={busy}
+              onClick={() => void run(() => connectNewFile(data), true)}
+            >
+              Сохранить как новый файл
+            </button>
+            {diskOn && (
+              <button
+                className="ghost"
+                type="button"
+                disabled={busy}
+                onClick={() => void run(async () => { await disconnectDisk() }, false)}
+              >
+                Отключить файл
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="note">
+            Подключить файл напрямую умеют Chrome и Edge. Здесь — выгрузка и
+            загрузка вручную.
+          </p>
+        )}
+        <div className="row" style={{ marginTop: 10 }}>
           <button className="ghost" type="button" onClick={() => exportFile(data)}>
-            Выгрузить файл
+            Выгрузить копию
           </button>
           <button className="ghost" type="button" onClick={() => fileInput.current?.click()}>
-            Загрузить файл
+            Загрузить копию
           </button>
           <input
             ref={fileInput}
@@ -94,10 +170,6 @@ export function Settings({
             onChange={(e) => void onPickFile(e.target.files?.[0])}
           />
         </div>
-        <p className="note">
-          Выгруженный JSON можно править руками в любом редакторе и загружать
-          обратно — это же формат бэкапа.
-        </p>
       </section>
     </>
   )

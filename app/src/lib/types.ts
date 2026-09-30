@@ -39,12 +39,22 @@ export const STATUS_LABEL: Record<ProductStatus, string> = {
   reacted: 'Была реакция',
 }
 
+export type ProductEra = 'now' | 'past'
+
+export const ERA_LABEL: Record<ProductEra, string> = {
+  now: 'Сейчас',
+  past: 'Раньше',
+}
+
 export interface Product {
   id: string
   name: string
   brand?: string
   zone: Zone
   status: ProductStatus
+  /** Сейчас на полке или уже нет. Как дробить внутри — решим отдельно. */
+  era: ProductEra
+  category?: string
   inci: string
   verdict?: string
   notes?: string
@@ -88,4 +98,15 @@ export function isAppData(value: unknown): value is AppData {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Partial<AppData>
   return v.version === 1 && Array.isArray(v.products) && !!v.profile
+}
+
+/** Старые выгрузки без поля era считаем текущей полкой. */
+export function normalizeData(data: AppData): AppData {
+  return {
+    ...data,
+    products: data.products.map((p) => ({
+      ...p,
+      era: p.era === 'past' ? 'past' : 'now',
+    })),
+  }
 }

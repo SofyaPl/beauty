@@ -1,24 +1,27 @@
 import { useEffect, useState } from 'react'
 import { ZONE_ORDER, ZONES, type Zone } from './data/dictionary'
 import { analyze, type Analysis } from './lib/analyze'
-import { loadData, saveData } from './lib/storage'
+import { initStorage, isDiskConnected, saveData } from './lib/storage'
 import { emptyData, type AppData } from './lib/types'
 import { ResultView } from './components/ResultView'
 import { Settings } from './components/Settings'
+import { Shelf } from './components/Shelf'
 
 const ZONE_IDS = ZONE_ORDER
 
 export default function App() {
-  const [tab, setTab] = useState<'check' | 'settings'>('check')
+  const [tab, setTab] = useState<'check' | 'shelf' | 'settings'>('shelf')
   const [zone, setZone] = useState<Zone>('body')
   const [input, setInput] = useState('')
   const [result, setResult] = useState<Analysis | null>(null)
   const [data, setData] = useState<AppData>(emptyData)
+  const [diskOn, setDiskOn] = useState(false)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    void loadData().then((d) => {
+    void initStorage().then((d) => {
       setData(d)
+      setDiskOn(isDiskConnected())
       setLoaded(true)
     })
   }, [])
@@ -66,6 +69,14 @@ export default function App() {
           onClick={() => setTab('check')}
         >
           Проверка
+        </button>
+        <button
+          className="tab"
+          role="tab"
+          aria-selected={tab === 'shelf'}
+          onClick={() => setTab('shelf')}
+        >
+          Полка
         </button>
         <button
           className="tab"
@@ -135,9 +146,13 @@ export default function App() {
 
           <div className="results">{result && <ResultView result={result} />}</div>
         </div>
+      ) : tab === 'shelf' ? (
+        <div className="narrow">
+          <Shelf data={data} onChange={setData} />
+        </div>
       ) : (
         <div className="narrow">
-          <Settings data={data} onChange={setData} />
+          <Settings data={data} onChange={setData} diskOn={diskOn} onDisk={setDiskOn} />
         </div>
       )}
 

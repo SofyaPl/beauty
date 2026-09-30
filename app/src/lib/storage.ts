@@ -1,16 +1,32 @@
-import { emptyData, isAppData, type AppData } from './types'
+import { emptyData, isAppData, normalizeData, type AppData } from './types'
+import {
+  canWrite,
+  diskSupported,
+  forgetDiskHandle,
+  pickExistingDiskFile,
+  pickNewDiskFile,
+  readDiskFile,
+  restoreDiskHandle,
+  writeDiskFile,
+  type DiskHandle,
+} from './disk'
 
 /**
  * Хранилище подключаемое: приложение работает через этот интерфейс
- * и не знает, где именно лежат данные. Добавить Яндекс.Диск или
- * приватный репозиторий — значит дописать один файл с этими методами,
- * не трогая всё остальное.
+ * и не знает, где именно лежат данные.
+ *
+ * Не публичная ссылка Яндекс.Диска: такую ссылку, вшитую в сайт, любой
+ * прочитает в исходниках GitHub. Публичный доступ по ссылке к тому же
+ * только на чтение — полку с сайта обратно на Диск не сохранить.
+ *
+ * Рабочая схема: JSON лежит в папке проекта на Диске. Браузер открывает
+ * его через выбор файла (Chrome/Edge) и пишет туда же. Диск сам развозит
+ * файл по компьютерам, где он установлен.
  */
 export interface StorageAdapter {
   id: string
   title: string
   description: string
-  /** готов к работе: настроен и доступен */
   isReady(): boolean
   load(): Promise<AppData | null>
   save(data: AppData): Promise<void>
@@ -18,23 +34,18 @@ export interface StorageAdapter {
 
 const LS_KEY = 'beauty.data.v1'
 
-/**
- * Память браузера. Работает сразу и без настройки, данные не покидают
- * компьютер. Минус — только этот браузер и потеря при очистке данных
- * сайта, поэтому экспорт лучше делать регулярно.
- */
 export const localAdapter: StorageAdapter = {
   id: 'local',
   title: 'Память браузера',
   description:
-    'Данные хранятся в этом браузере и никуда не уходят. Настройки не требует. При очистке данных сайта пропадают — поэтому есть выгрузка в файл.',
+    'Данные хранятся в этом браузере. При очистке сайта пропадают — поэтому есть файл на Диске.',
   isReady: () => typeof localStorage !== 'undefined',
   async load() {
     const raw = localStorage.getItem(LS_KEY)
     if (!raw) return null
     try {
       const parsed: unknown = JSON.parse(raw)
-      return isAppData(parsed) ? parsed : null
+      return isAppData(parsed) ? normalizeData(parsed) : null
     } catch {
       return null
     }
@@ -44,32 +55,60 @@ export const localAdapter: StorageAdapter = {
   },
 }
 
-/**
- * Зарегистрированные хранилища.
- *
- * Следующие на очереди:
- *  - Файл на диске через File System Access API (Chrome/Edge). Источник
- *    правды — JSON в этой же папке на Яндекс.Диске, без сервера.
- *  - Приватный репозиторий на GitHub через Contents API. Даёт историю
- *    изменений профиля, но для ежедневной работы тяжелее файла.
- *
- * Оба реализуются как ещё один объект с теми же методами.
- */
-export const ADAPTERS: StorageAdapter[] = [localAdapter]
+let diskHandle: DiskHandle | null = null
 
-export async function loadData(adapter: StorageAdapter = localAdapter): Promise<AppData> {
-  const loaded = await adapter.load()
-  return loaded ?? emptyData()
+export function isDiskConnected(): boolean {
+  return diskHandle !== null
 }
 
-export async function saveData(
-  data: AppData,
-  adapter: StorageAdapter = localAdapter,
-): Promise<void> {
-  await adapter.save({ ...data, updatedAt: new Date().toISOString() })
+export function isDiskSupported(): boolean {
+  return diskSupported()
 }
 
-/** Выгрузка всех данных одним файлом — для бэкапа и переноса. */
+export async function initStorage(): Promise<AppData> {
+  if (diskSupported()) {
+    diskHandle = await restoreDiskHandle()
+    if (diskHandle && (await canWrite(diskHandle, false))) {
+      try {
+        const fromDisk = await readDiskFile(diskHandle)
+        await localAdapter.save(fromDisk)
+        return fromDisk
+      } catch {
+        // файл недоступен — ниже память браузера
+      }
+    }
+  }
+  const local = await localAdapter.load()
+  return local ?? emptyData()
+}
+
+export async function saveData(data: AppData): Promise<void> {
+  const stamped = { ...data, updatedAt: new Date().toISOString() }
+  await localAdapter.save(stamped)
+  if (diskHandle && (await canWrite(diskHandle, false))) {
+    await writeDiskFile(diskHandle, stamped)
+  }
+}
+
+export async function connectExistingFile(): Promise<AppData> {
+  diskHandle = await pickExistingDiskFile()
+  const data = await readDiskFile(diskHandle)
+  await localAdapter.save(data)
+  return data
+}
+
+export async function connectNewFile(current: AppData): Promise<AppData> {
+  const stamped = { ...current, updatedAt: new Date().toISOString() }
+  diskHandle = await pickNewDiskFile(stamped)
+  await localAdapter.save(stamped)
+  return stamped
+}
+
+export async function disconnectDisk(): Promise<void> {
+  diskHandle = null
+  await forgetDiskHandle()
+}
+
 export function exportFile(data: AppData): void {
   const stamp = new Date().toISOString().slice(0, 10)
   const blob = new Blob([JSON.stringify(data, null, 2)], {
@@ -83,12 +122,10 @@ export function exportFile(data: AppData): void {
   URL.revokeObjectURL(url)
 }
 
-/** Чтение файла, выгруженного ранее или отредактированного вручную. */
 export async function importFile(file: File): Promise<AppData> {
-  const text = await file.text()
-  const parsed: unknown = JSON.parse(text)
+  const parsed: unknown = JSON.parse(await file.text())
   if (!isAppData(parsed)) {
     throw new Error('Файл не похож на выгрузку «Полки»: нет version, profile или products.')
   }
-  return parsed
+  return normalizeData(parsed)
 }

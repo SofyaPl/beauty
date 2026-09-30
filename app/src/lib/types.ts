@@ -125,10 +125,21 @@ export function inferForm(product: Product): Form {
 export function normalizeData(data: AppData): AppData {
   return {
     ...data,
-    products: data.products.map((p) => ({
-      ...p,
-      era: p.era === 'past' ? 'past' : 'now',
-      form: inferForm(p),
-    })),
+    products: data.products.map((p) => {
+      const base = {
+        ...p,
+        era: (p.era === 'past' ? 'past' : 'now') as ProductEra,
+        form: inferForm(p),
+      }
+      // Маркетинг «для ног» ≠ ступни. 20% — тело; пятки в линейке — 35%.
+      if (p.id === 'medline-urea-20') {
+        return {
+          ...base,
+          zone: 'body' as const,
+          name: 'Крем с мочевиной 20%',
+        }
+      }
+      return base
+    }),
   }
 }

@@ -16,18 +16,24 @@ function stamp(): string {
   return new Date().toISOString()
 }
 
+function title(product: Product): string {
+  return product.brand ? `${product.brand} — ${product.name}` : product.name
+}
+
 function Card({
   product,
   onEra,
+  onZone,
 }: {
   product: Product
   onEra: (era: ProductEra) => void
+  onZone: (zone: Zone) => void
 }) {
   const [open, setOpen] = useState(false)
   return (
     <article className="product" data-status={product.status}>
       <button type="button" className="product-head" onClick={() => setOpen((v) => !v)}>
-        <span className="product-name">{product.name}</span>
+        <span className="product-name">{title(product)}</span>
         <span className="product-meta">
           {ZONES[product.zone]} · {FORMS[inferForm(product)]}
           {product.category ? ` · ${product.category}` : ''}
@@ -40,6 +46,20 @@ function Card({
       {open && (
         <div className="product-body">
           {product.inci ? <p className="inci">{product.inci}</p> : <p className="note">Состава нет.</p>}
+          <p className="note">Зона</p>
+          <div className="zones" style={{ marginBottom: 10 }}>
+            {ZONE_ORDER.map((z) => (
+              <button
+                key={z}
+                type="button"
+                className="zone"
+                aria-pressed={product.zone === z}
+                onClick={() => onZone(z)}
+              >
+                {ZONES[z]}
+              </button>
+            ))}
+          </div>
           <div className="row">
             {product.era === 'now' ? (
               <button className="ghost" type="button" onClick={() => onEra('past')}>
@@ -183,6 +203,13 @@ export function Shelf({
     })
   }
 
+  const setZone = (id: string, zone: Zone) => {
+    onChange({
+      ...data,
+      products: data.products.map((p) => (p.id === id ? { ...p, zone, updatedAt: stamp() } : p)),
+    })
+  }
+
   return (
     <>
       <div className="zones" style={{ marginBottom: 18 }}>
@@ -214,6 +241,31 @@ export function Shelf({
         </p>
       )}
 
+      {visible.length > 0 && (
+        <section className="card" style={{ marginTop: 0 }}>
+          <h3>Состав полки — {visible.length}</h3>
+          {ZONE_ORDER.filter((z) => visible.some((p) => p.zone === z)).map((z) => (
+            <div key={z} style={{ marginBottom: 12 }}>
+              <div className="group-title">{ZONES[z]}</div>
+              <ul className="plain">
+                {visible
+                  .filter((p) => p.zone === z)
+                  .map((p) => (
+                    <li key={p.id}>
+                      {title(p)}
+                      <span className="pos">
+                        {' '}
+                        · {FORMS[inferForm(p)].toLowerCase()}
+                        {p.era === 'past' ? ' · раньше' : ''}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
+
       <section>
         <h3>Сейчас</h3>
         {now.length === 0 ? (
@@ -221,7 +273,12 @@ export function Shelf({
         ) : (
           <div className="product-list">
             {now.map((p) => (
-              <Card key={p.id} product={p} onEra={(era) => setEra(p.id, era)} />
+              <Card
+                key={p.id}
+                product={p}
+                onEra={(era) => setEra(p.id, era)}
+                onZone={(z) => setZone(p.id, z)}
+              />
             ))}
           </div>
         )}
@@ -238,7 +295,12 @@ export function Shelf({
         ) : (
           <div className="product-list">
             {past.map((p) => (
-              <Card key={p.id} product={p} onEra={(era) => setEra(p.id, era)} />
+              <Card
+                key={p.id}
+                product={p}
+                onEra={(era) => setEra(p.id, era)}
+                onZone={(z) => setZone(p.id, z)}
+              />
             ))}
           </div>
         )}

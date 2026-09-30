@@ -32,6 +32,17 @@ export default function App() {
 
   const check = () => setResult(analyze(input, zone, data.profile))
 
+  const pasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      if (text.trim()) setInput(text)
+    } catch {
+      alert(
+        'Браузер не отдал буфер. Кликни в поле и вставь правой кнопкой — или открой сайт в обычном Chrome, не во встроенном окне Cursor: там Ctrl+V часто уходит в редактор.',
+      )
+    }
+  }
+
   const clear = () => {
     setInput('')
     setResult(null)
@@ -117,12 +128,21 @@ export default function App() {
                 value={input}
                 placeholder="Aqua, Glycerin, Dimethicone…"
                 onChange={(e) => setInput(e.target.value)}
+                onPaste={(e) => {
+                  const text = e.clipboardData.getData('text')
+                  if (!text) return
+                  e.preventDefault()
+                  setInput(text)
+                }}
               />
             </div>
 
             <div className="row">
               <button className="primary" type="button" disabled={!input.trim()} onClick={check}>
                 Проверить
+              </button>
+              <button className="ghost" type="button" onClick={() => void pasteFromClipboard()}>
+                Вставить
               </button>
               {result && (
                 <button className="ghost" type="button" onClick={remember}>

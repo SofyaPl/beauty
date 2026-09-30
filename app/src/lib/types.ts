@@ -107,18 +107,22 @@ export function isAppData(value: unknown): value is AppData {
   return v.version === 1 && Array.isArray(v.products) && !!v.profile
 }
 
-/** Старые выгрузки без поля era считаем текущей полкой. */
+/**
+ * Смываемое — ушло в ту же процедуру («раз и всё»).
+ * Несмываемое — остаётся: крем стирается со временем, цвет хны держится месяцами.
+ * Бальзам держат несколько минут и смывают — это смываемое, не крем.
+ * Если форма уже записана в карточке, она главнее догадки по названию.
+ */
 export function inferForm(product: Product): Form {
+  if (product.form === 'rinse' || product.form === 'leave') return product.form
   const blob = `${product.category ?? ''} ${product.name}`.toLowerCase()
-  // Сначала по роли средства: бальзам смывают, как шампунь.
   if (
-    /мыл|шампун|умыв|очищен|пудр|гель для душа|синдет|бальзам|кондиционер|ополаскив|хна|окраш/.test(
+    /мыл|шампун|умыв|очищен|пудр|гель для душа|синдет|бальзам|кондиционер|ополаскив|нанопятк|экспресс-педикюр/.test(
       blob,
     )
   ) {
     return 'rinse'
   }
-  if (product.form === 'rinse' || product.form === 'leave') return product.form
   return 'leave'
 }
 
@@ -138,6 +142,12 @@ export function normalizeData(data: AppData): AppData {
           zone: 'body' as const,
           name: 'Крем с мочевиной 20%',
         }
+      }
+      if (p.id === 'nanopiatki') {
+        return { ...base, form: 'rinse' as const }
+      }
+      if (p.id === 'lady-henna') {
+        return { ...base, form: 'leave' as const }
       }
       return base
     }),

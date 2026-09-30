@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { ZONES, type Zone } from './data/dictionary'
+import { ZONE_ORDER, ZONES, type Zone } from './data/dictionary'
 import { analyze, type Analysis } from './lib/analyze'
 import { loadData, saveData } from './lib/storage'
 import { emptyData, type AppData } from './lib/types'
 import { ResultView } from './components/ResultView'
 import { Settings } from './components/Settings'
 
-const ZONE_IDS = Object.keys(ZONES) as Zone[]
+const ZONE_IDS = ZONE_ORDER
 
 export default function App() {
   const [tab, setTab] = useState<'check' | 'settings'>('check')

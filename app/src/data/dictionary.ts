@@ -6,10 +6,13 @@
  * Публичный репозиторий из-за этого ничего личного не раскрывает.
  */
 
-export type Zone = 'body' | 'hair' | 'face'
+export type Zone = 'body' | 'feet' | 'hair' | 'face'
+
+export const ZONE_ORDER: Zone[] = ['body', 'feet', 'hair', 'face']
 
 export const ZONES: Record<Zone, string> = {
-  body: 'Руки и ноги',
+  body: 'Тело',
+  feet: 'Ступни',
   hair: 'Волосы',
   face: 'Лицо',
 }

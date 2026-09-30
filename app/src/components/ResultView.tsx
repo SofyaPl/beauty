@@ -1,27 +1,51 @@
-import { isTrace, type Analysis } from '../lib/analyze'
+import { FLAG_LABEL, isTrace, type Analysis, type FlagMark } from '../lib/analyze'
 
 export function ResultView({ result }: { result: Analysis }) {
-  const { parse, hits, watchHits, unmatched, level, headline, reasons } = result
-
-  const relevant = hits.filter((h) => h.relevantToZone)
+  const { parse, hits, flags, unmatched, level, headline } = result
   const otherZones = hits.filter((h) => !h.relevantToZone)
 
   return (
     <>
       <section className="card verdict" data-level={level}>
         <h2>{headline}</h2>
-        {reasons.length > 0 ? (
+        {level === 'unclear' && parse.listWarnings.length > 0 && (
           <ul className="plain">
-            {reasons.map((r, i) => (
-              <li key={i}>{r}</li>
+            {parse.listWarnings.map((w, i) => (
+              <li key={i}>{w}</li>
             ))}
           </ul>
-        ) : (
-          <p className="note" style={{ margin: 0 }}>
-            Ни одна группа из словаря не сработала.
-          </p>
         )}
       </section>
+
+      {flags.length > 0 && (
+        <section className="card">
+          <h3>Флаги</h3>
+          <ul className="flags">
+            {flags.map((f, i) => (
+              <li key={`${f.mark}-${f.title}-${i}`}>
+                <span className="mark" data-mark={f.mark}>
+                  {FLAG_LABEL[f.mark as FlagMark]}
+                </span>
+                <div>
+                  <div className="group-title">{f.title}</div>
+                  <div className="items">
+                    {f.items.map((ing) => (
+                      <span key={ing.position}>
+                        {ing.display}{' '}
+                        <span className="pos">
+                          ({ing.position}-я{isTrace(ing, parse) ? ', следы' : ''})
+                        </span>
+                        {ing !== f.items[f.items.length - 1] ? ', ' : ''}
+                      </span>
+                    ))}
+                  </div>
+                  {f.note && <div className="note">{f.note}</div>}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {parse.listWarnings.length > 0 && level !== 'unclear' && (
         <div className="warn">
@@ -34,50 +58,6 @@ export function ResultView({ result }: { result: Analysis }) {
         </div>
       )}
 
-      {watchHits.length > 0 && (
-        <section className="card">
-          <h3>Личное наблюдение</h3>
-          <ul className="plain">
-            {watchHits.map((w, i) => (
-              <li key={i}>
-                <span className="group-title" data-kind="watch">
-                  {w.item.display}
-                </span>
-                <div className="note">{w.reason}</div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {relevant.length > 0 && (
-        <section className="card">
-          <h3>Что нашлось по словарю</h3>
-          <ul className="plain">
-            {relevant.map((h) => (
-              <li key={h.group.id}>
-                <span className="group-title" data-kind={h.group.kind}>
-                  {h.group.title}
-                  {h.stopRule ? ' — стоп-лист' : ''}
-                </span>
-                <div className="items">
-                  {h.items.map((i) => (
-                    <span key={i.position}>
-                      {i.display}{' '}
-                      <span className="pos">
-                        ({i.position}-я{isTrace(i, parse) ? ', следы' : ''})
-                      </span>
-                      {i !== h.items[h.items.length - 1] ? ', ' : ''}
-                    </span>
-                  ))}
-                </div>
-                {h.group.note && <div className="note">{h.group.note}</div>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {otherZones.length > 0 && (
         <section className="card">
           <h3>Есть в составе, но для этой зоны не важно</h3>
@@ -85,9 +65,7 @@ export function ResultView({ result }: { result: Analysis }) {
             {otherZones.map((h) => (
               <li key={h.group.id}>
                 <span className="group-title">{h.group.title}</span>
-                <div className="items">
-                  {h.items.map((i) => i.display).join(', ')}
-                </div>
+                <div className="items">{h.items.map((i) => i.display).join(', ')}</div>
               </li>
             ))}
           </ul>

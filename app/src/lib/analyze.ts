@@ -11,16 +11,40 @@ export interface GroupHit {
   stopRule?: StopRule
 }
 
+/** Метка флага. Короткий вердикт собирается из худшей из них. */
+export type FlagMark = 'exclude' | 'poor' | 'plus' | 'fact'
+
+export const FLAG_LABEL: Record<FlagMark, string> = {
+  exclude: 'Исключает',
+  poor: 'Мало подходит',
+  plus: 'В плюс',
+  fact: 'Факт',
+}
+
+const MARK_RANK: Record<FlagMark, number> = {
+  exclude: 0,
+  poor: 1,
+  plus: 2,
+  fact: 3,
+}
+
+export interface Flag {
+  mark: FlagMark
+  title: string
+  items: Ingredient[]
+  note?: string
+}
+
 export type VerdictLevel = 'ok' | 'caution' | 'avoid' | 'unclear'
 
 export interface Analysis {
   parse: ParseResult
   hits: GroupHit[]
+  flags: Flag[]
   watchHits: { item: Ingredient; reason: string }[]
   unmatched: Ingredient[]
   level: VerdictLevel
   headline: string
-  reasons: string[]
 }
 
 const EXACT = new Map<string, Set<string>>(
@@ -62,60 +86,72 @@ export function analyze(input: string, zone: Zone, profile: Profile): Analysis {
     )
 
   const unmatched = parse.ingredients.filter((ing) => !matchedKeys.has(ing.key))
+  const flags = collectFlags(hits, watchHits)
+  const summary = verdict(parse, flags)
+  return {
+    parse,
+    hits,
+    flags: summary.level === 'unclear' ? [] : flags,
+    watchHits,
+    unmatched,
+    ...summary,
+  }
+}
 
-  return { parse, hits, watchHits, unmatched, ...verdict(parse, hits, watchHits) }
+function markFor(hit: GroupHit): FlagMark | null {
+  if (hit.stopRule) return 'exclude'
+  if (!hit.relevantToZone) return null
+  if (hit.group.kind === 'watch') return 'poor'
+  if (hit.group.kind === 'good') return 'plus'
+  return 'fact'
+}
+
+function collectFlags(
+  hits: GroupHit[],
+  watchHits: Analysis['watchHits'],
+): Flag[] {
+  const fromGroups: Flag[] = []
+  for (const hit of hits) {
+    const mark = markFor(hit)
+    if (!mark) continue
+    fromGroups.push({
+      mark,
+      title: hit.group.title,
+      items: hit.items,
+      note: hit.stopRule?.reason ?? hit.group.note,
+    })
+  }
+
+  const fromWatch: Flag[] = watchHits.map((w) => ({
+    mark: 'exclude' as const,
+    title: w.item.display,
+    items: [w.item],
+    note: w.reason,
+  }))
+
+  return [...fromWatch, ...fromGroups].sort(
+    (a, b) => MARK_RANK[a.mark] - MARK_RANK[b.mark],
+  )
 }
 
 function verdict(
   parse: ParseResult,
-  hits: GroupHit[],
-  watchHits: Analysis['watchHits'],
-): Pick<Analysis, 'level' | 'headline' | 'reasons'> {
-  const reasons: string[] = []
-
+  flags: Flag[],
+): Pick<Analysis, 'level' | 'headline'> {
   if (parse.ingredients.length === 0) {
-    return { level: 'unclear', headline: 'Состав не распознан', reasons: [] }
+    return { level: 'unclear', headline: 'Состав не распознан' }
   }
 
   // Рекламный список проверять бессмысленно — сначала нужен настоящий INCI.
   if (parse.listWarnings.length >= 2) {
-    return {
-      level: 'unclear',
-      headline: 'Похоже, это не INCI',
-      reasons: parse.listWarnings,
-    }
+    return { level: 'unclear', headline: 'Это не INCI' }
   }
 
-  const stopped = hits.filter((h) => h.stopRule)
-  const watchedGroups = hits.filter(
-    (h) => !h.stopRule && h.relevantToZone && h.group.kind === 'watch',
-  )
-
-  for (const h of stopped) {
-    reasons.push(
-      `${h.group.title}: ${h.items.map((i) => i.display).join(', ')} — в стоп-листе${h.stopRule?.reason ? `, ${h.stopRule.reason}` : ''}.`,
-    )
+  if (flags.some((f) => f.mark === 'exclude')) {
+    return { level: 'avoid', headline: 'Не подходит' }
   }
-  for (const w of watchHits) {
-    reasons.push(`${w.item.display} — ${w.reason}.`)
+  if (flags.some((f) => f.mark === 'poor')) {
+    return { level: 'caution', headline: 'Мало подходит' }
   }
-
-  if (stopped.length > 0 || watchHits.length > 0) {
-    return { level: 'avoid', headline: 'Скорее мимо', reasons }
-  }
-
-  if (watchedGroups.length > 0) {
-    for (const h of watchedGroups) {
-      const notTrace = h.items.filter((i) => !isTrace(i, parse))
-      const shown = (notTrace.length ? notTrace : h.items).map((i) => i.display)
-      reasons.push(`${h.group.title}: ${shown.join(', ')}.`)
-    }
-    return { level: 'caution', headline: 'Посмотреть внимательно', reasons }
-  }
-
-  const good = hits.filter((h) => h.group.kind === 'good' && h.relevantToZone)
-  for (const h of good) {
-    reasons.push(`${h.group.title}: ${h.items.map((i) => i.display).join(', ')}.`)
-  }
-  return { level: 'ok', headline: 'Ничего настораживающего', reasons }
+  return { level: 'ok', headline: 'Подходит' }
 }

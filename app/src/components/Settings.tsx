@@ -1,9 +1,9 @@
 import { useRef } from 'react'
-import { GROUPS, ZONES, type Zone } from '../data/dictionary'
+import { GROUPS, ZONE_ORDER, ZONES, type Zone } from '../data/dictionary'
 import { exportFile, importFile, localAdapter } from '../lib/storage'
 import type { AppData, StopRule } from '../lib/types'
 
-const ZONE_IDS = Object.keys(ZONES) as Zone[]
+const ZONE_IDS = ZONE_ORDER
 
 function toggleZone(rules: StopRule[], groupId: string, zone: Zone): StopRule[] {
   const existing = rules.find((r) => r.groupId === groupId)
@@ -75,9 +75,9 @@ export function Settings({
           <strong>{localAdapter.title}.</strong> {localAdapter.description}
         </p>
         <p className="note">
-          Хранилище подключаемое: следующими планируются Яндекс.Диск, чтобы файл
-          данных попадал в ту же синхронизируемую папку, где проект правится с
-          компьютера, и приватный репозиторий с историей изменений.
+          Хранилище подключаемое. Если надоест копировать файл руками, следующим
+          шагом будет открыть JSON прямо из этой папки на Диске — браузер умеет
+          писать в выбранный файл, без сервера и без Google-таблицы.
         </p>
         <div className="row">
           <button className="ghost" type="button" onClick={() => exportFile(data)}>
@@ -96,7 +96,7 @@ export function Settings({
         </div>
         <p className="note">
           Выгруженный JSON можно править руками в любом редакторе и загружать
-          обратно — это же формат переноса между устройствами.
+          обратно — это же формат бэкапа.
         </p>
       </section>
     </>

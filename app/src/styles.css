@@ -48,7 +48,7 @@ h1 {
 
 .sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
 
-.tabs { display: flex; gap: 6px; margin-bottom: 22px; max-width: 400px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 22px; max-width: 440px; }
 
 .narrow { max-width: 640px; }
 
@@ -169,6 +169,32 @@ ul.plain { list-style: none; padding: 0; margin: 0; }
 ul.plain li { padding: 7px 0; border-bottom: 1px solid var(--line); }
 ul.plain li:last-child { border-bottom: none; }
 
+ul.flags { list-style: none; padding: 0; margin: 0; }
+ul.flags li {
+  display: grid;
+  grid-template-columns: 9.5em 1fr;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+ul.flags li:last-child { border-bottom: none; }
+
+.mark {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  text-align: center;
+  white-space: nowrap;
+}
+.mark[data-mark='exclude'] { background: #f8e4df; color: var(--avoid); }
+.mark[data-mark='poor'] { background: #f8edd8; color: var(--caution); }
+.mark[data-mark='plus'] { background: #e3f0e7; color: var(--ok); }
+.mark[data-mark='fact'] { background: var(--bg); color: var(--muted); }
+
 .group-title { font-weight: 600; }
 .group-title[data-kind='watch'] { color: var(--caution); }
 .group-title[data-kind='good'] { color: var(--ok); }
@@ -212,7 +238,7 @@ ul.plain li:last-child { border-bottom: none; }
 
 .toggle-row:last-child { border-bottom: none; }
 
-.zone-toggles { display: flex; gap: 4px; }
+.zone-toggles { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
 
 .zone-toggles button {
   font: inherit;

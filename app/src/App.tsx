@@ -29,6 +29,11 @@ export default function App() {
 
   const check = () => setResult(analyze(input, zone, data.profile))
 
+  const clear = () => {
+    setInput('')
+    setResult(null)
+  }
+
   const remember = () => {
     if (!result) return
     setData({
@@ -49,7 +54,9 @@ export default function App() {
   return (
     <div className="app">
       <h1>Полка</h1>
-      <p className="sub">Проверка состава под свой профиль. Работает без интернета.</p>
+      <p className="sub">
+        Проверка состава под свой профиль. Считается на месте — ничего не уходит в сеть.
+      </p>
 
       <div className="tabs" role="tablist">
         <button
@@ -71,73 +78,70 @@ export default function App() {
       </div>
 
       {tab === 'check' ? (
-        <>
-          <div className="field">
-            <label className="block">Для какой зоны средство</label>
-            <div className="zones">
-              {ZONE_IDS.map((z) => (
-                <button
-                  key={z}
-                  type="button"
-                  className="zone"
-                  aria-pressed={zone === z}
-                  onClick={() => setZone(z)}
-                >
-                  {ZONES[z]}
-                </button>
-              ))}
+        <div className="split">
+          <div>
+            <div className="field">
+              <label className="block">Для какой зоны средство</label>
+              <div className="zones">
+                {ZONE_IDS.map((z) => (
+                  <button
+                    key={z}
+                    type="button"
+                    className="zone"
+                    aria-pressed={zone === z}
+                    onClick={() => setZone(z)}
+                  >
+                    {ZONES[z]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="field">
-            <label className="block" htmlFor="inci">
-              Состав
-            </label>
-            <textarea
-              id="inci"
-              value={input}
-              placeholder="Aqua, Glycerin, Dimethicone…"
-              onChange={(e) => setInput(e.target.value)}
-            />
-          </div>
+            <div className="field">
+              <label className="block" htmlFor="inci">
+                Состав
+              </label>
+              <textarea
+                id="inci"
+                value={input}
+                placeholder="Aqua, Glycerin, Dimethicone…"
+                onChange={(e) => setInput(e.target.value)}
+              />
+            </div>
 
-          <div className="row">
-            <button className="primary" type="button" disabled={!input.trim()} onClick={check}>
-              Проверить
-            </button>
-            {result && (
-              <button className="ghost" type="button" onClick={remember}>
-                Сохранить разбор
+            <div className="row">
+              <button className="primary" type="button" disabled={!input.trim()} onClick={check}>
+                Проверить
               </button>
-            )}
-            {input && (
-              <button
-                className="ghost"
-                type="button"
-                onClick={() => {
-                  setInput('')
-                  setResult(null)
-                }}
-              >
-                Очистить
-              </button>
+              {result && (
+                <button className="ghost" type="button" onClick={remember}>
+                  Сохранить разбор
+                </button>
+              )}
+              {input && (
+                <button className="ghost" type="button" onClick={clear}>
+                  Очистить
+                </button>
+              )}
+            </div>
+
+            {data.profile.stopList.length === 0 && (
+              <p className="foot">
+                Стоп-лист пока не настроен, поэтому вердикт опирается только на общие
+                группы. Отметь свои запреты в настройках — и проверка станет личной.
+              </p>
             )}
           </div>
 
-          {result && <ResultView result={result} />}
-
-          {data.profile.stopList.length === 0 && (
-            <p className="foot">
-              Стоп-лист пока не настроен, поэтому вердикт опирается только на общие
-              группы. Отметь свои запреты в настройках — и проверка станет личной.
-            </p>
-          )}
-        </>
+          <div className="results">{result && <ResultView result={result} />}</div>
+        </div>
       ) : (
-        <Settings data={data} onChange={setData} />
+        <div className="narrow">
+          <Settings data={data} onChange={setData} />
+        </div>
       )}
 
-      <p className="foot">
+      <p className="foot narrow">
         Состав не показывает концентраций, а порядок в INCI обязателен только
         до 1%. Инструмент читает этикетку и не заменяет врача.
       </p>

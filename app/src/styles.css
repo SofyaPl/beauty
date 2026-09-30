@@ -22,10 +22,23 @@ body {
 }
 
 .app {
-  max-width: 680px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 20px 16px calc(40px + env(safe-area-inset-bottom));
+  padding: 28px 20px 60px;
 }
+
+/*
+ * Состав обычно копируют из соседней вкладки с маркетплейсом, поэтому на
+ * широком экране форма и разбор стоят рядом: вставил слева — прочитал справа.
+ */
+.split { display: grid; gap: 28px; align-items: start; }
+
+@media (min-width: 900px) {
+  .split { grid-template-columns: minmax(0, 400px) minmax(0, 1fr); }
+  textarea { min-height: 280px; }
+}
+
+.results > .card:first-child, .results > .warn:first-child { margin-top: 0; }
 
 h1 {
   font-size: 22px;
@@ -35,7 +48,9 @@ h1 {
 
 .sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; }
 
-.tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 22px; max-width: 400px; }
+
+.narrow { max-width: 640px; }
 
 .tab {
   flex: 1;

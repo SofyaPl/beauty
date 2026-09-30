@@ -1,0 +1,19 @@
+{
+  "name": "Полка — проверка составов",
+  "short_name": "Полка",
+  "description": "Проверка INCI-состава под личный профиль кожи и волос",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5f2",
+  "theme_color": "#f7f5f2",
+  "lang": "ru",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

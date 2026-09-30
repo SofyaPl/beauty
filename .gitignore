@@ -13,3 +13,18 @@
 
 !.gitignore
 !README.md
+
+# Сборка и публикация
+!.github/
+!.github/**
+
+# Код приложения
+!app/
+!app/**
+
+# --- Исключения внутри разрешённого ---
+
+app/node_modules/
+app/dist/
+app/.vite/
+app/*.local

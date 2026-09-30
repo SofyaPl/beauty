@@ -1,4 +1,4 @@
-import type { Zone } from '../data/dictionary'
+import type { Form, Zone } from '../data/dictionary'
 
 /** Личное правило: какую группу считать стоп-листом и для каких зон. */
 export interface StopRule {
@@ -54,6 +54,8 @@ export interface Product {
   status: ProductStatus
   /** Сейчас на полке или уже нет. Как дробить внутри — решим отдельно. */
   era: ProductEra
+  /** Смываемое или нет. Если нет в файле — угадываем по категории. */
+  form?: Form
   category?: string
   inci: string
   verdict?: string
@@ -101,12 +103,20 @@ export function isAppData(value: unknown): value is AppData {
 }
 
 /** Старые выгрузки без поля era считаем текущей полкой. */
+export function inferForm(product: Product): Form {
+  if (product.form === 'rinse' || product.form === 'leave') return product.form
+  const blob = `${product.category ?? ''} ${product.name}`.toLowerCase()
+  if (/мыл|шампун|умыв|очищен|пудр|гель для душа|синдет/.test(blob)) return 'rinse'
+  return 'leave'
+}
+
 export function normalizeData(data: AppData): AppData {
   return {
     ...data,
     products: data.products.map((p) => ({
       ...p,
       era: p.era === 'past' ? 'past' : 'now',
+      form: inferForm(p),
     })),
   }
 }

@@ -17,6 +17,22 @@ export const ZONES: Record<Zone, string> = {
   face: 'Лицо',
 }
 
+/** Смываемое и несмываемое — разные задачи, даже на одной зоне. */
+export type Form = 'rinse' | 'leave'
+
+export const FORM_ORDER: Form[] = ['rinse', 'leave']
+
+export const FORMS: Record<Form, string> = {
+  rinse: 'Смываемое',
+  leave: 'Несмываемое',
+}
+
+/**
+ * Насколько группа важна для формы. 0 — не считается (мыло не оцениваем
+ * как крем). 1 слабо, 2 средне, 3 сильно.
+ */
+export type Weight = 0 | 1 | 2 | 3
+
 /** watch — присмотреться, good — искать специально, neutral — просто факт */
 export type GroupKind = 'watch' | 'good' | 'neutral'
 
@@ -26,11 +42,20 @@ export interface Group {
   kind: GroupKind
   /** Для каких зон группа осмысленна. Пусто — для всех. */
   zones?: Zone[]
+  weight?: Partial<Record<Form, Weight>>
   note?: string
   /** Точные нормализованные названия. */
   exact?: string[]
   /** Дополнительное правило по форме названия. */
   test?: (key: string) => boolean
+}
+
+export function groupWeight(group: Group, form: Form): Weight {
+  const set = group.weight?.[form]
+  if (set !== undefined) return set
+  if (group.kind === 'watch') return 2
+  if (group.kind === 'good') return form === 'leave' ? 2 : 0
+  return 0
 }
 
 const endsWithSilicone = (k: string) => /(cone|conol|siloxane|silanol)$/.test(k)
@@ -51,6 +76,7 @@ export const GROUPS: Group[] = [
     title: 'Силиконы нерастворимые',
     kind: 'watch',
     zones: ['hair'],
+    weight: { rinse: 3, leave: 2 },
     note: 'Для кудрявого метода исключены: образуют плёнку, которая не смывается водой и накапливается. Циклические (cyclo-) и амодиметикон считаются более спорными, чем остальные.',
     exact: ['polysilicone-11', 'polysilicone-15', 'trimethylsiloxysilicate'],
     test: (k) => endsWithSilicone(k) && !isSolubleSilicone(k),
@@ -68,6 +94,7 @@ export const GROUPS: Group[] = [
     id: 'sulfate',
     title: 'Сульфатные ПАВ',
     kind: 'watch',
+    weight: { rinse: 3, leave: 1 },
     note: 'Sodium Trideceth Sulfate по названию не похож на привычные SLS и SLES, но это сульфат.',
     exact: [
       'sodium lauryl sulfate', 'sodium laureth sulfate',
@@ -83,6 +110,7 @@ export const GROUPS: Group[] = [
     id: 'olefin-sulfonate',
     title: 'Сульфонаты',
     kind: 'watch',
+    weight: { rinse: 3, leave: 1 },
     note: 'Не сульфат, но по жёсткости близок.',
     exact: ['sodium c14-16 olefin sulfonate', 'sodium olefin sulfonate'],
   },
@@ -90,6 +118,7 @@ export const GROUPS: Group[] = [
     id: 'mild-surfactant',
     title: 'Мягкие моющие основы',
     kind: 'good',
+    weight: { rinse: 3, leave: 0 },
     note: 'Сульфосукцинаты, изетионаты и глюкозиды содержат в названии «sulf» или похожи на ПАВ, но к сульфатам не относятся.',
     exact: [
       'sodium cocoyl isethionate', 'sodium lauroyl methyl isethionate',
@@ -109,6 +138,7 @@ export const GROUPS: Group[] = [
     title: 'Забивают устья фолликулов — высокий приоритет',
     kind: 'watch',
     zones: ['body', 'face'],
+    weight: { rinse: 1, leave: 3 },
     note: 'Рейтинги комедогенности получены на кроличьем ухе и не учитывают ни концентрацию, ни остальную формулу. Это повод присмотреться, особенно в первых позициях, а не приговор.',
     exact: [
       'cocos nucifera oil', 'cocos nucifera seed butter', 'coconut oil',
@@ -122,6 +152,7 @@ export const GROUPS: Group[] = [
     title: 'Забивают устья фолликулов — средний приоритет',
     kind: 'watch',
     zones: ['body', 'face'],
+    weight: { rinse: 0, leave: 2 },
     exact: [
       'theobroma cacao seed butter', 'ethylhexyl palmitate', 'oleic acid',
       'triticum vulgare germ oil', 'lanolin', 'lanolin alcohol', 'acetylated lanolin',
@@ -133,6 +164,7 @@ export const GROUPS: Group[] = [
     id: 'drying-alcohol',
     title: 'Спирты-растворители',
     kind: 'watch',
+    weight: { rinse: 1, leave: 2 },
     note: 'Имеют значение только в первых позициях. В хвосте списка это следовые количества.',
     exact: [
       'alcohol', 'alcohol denat', 'denatured alcohol', 'ethanol',
@@ -155,12 +187,14 @@ export const GROUPS: Group[] = [
     id: 'fragrance',
     title: 'Отдушка',
     kind: 'watch',
+    weight: { rinse: 1, leave: 2 },
     exact: ['parfum', 'fragrance', 'aroma', 'perfume'],
   },
   {
     id: 'fragrance-allergen',
     title: 'Маркируемые аллергены отдушки',
     kind: 'watch',
+    weight: { rinse: 1, leave: 2 },
     note: 'В ЕС их обязаны указывать отдельной строкой. Если такой ингредиент есть — отдушка в средстве есть, даже когда слова Parfum нет.',
     exact: [
       'limonene', 'linalool', 'citronellol', 'geraniol', 'hexyl cinnamal',
@@ -175,6 +209,7 @@ export const GROUPS: Group[] = [
     id: 'banned-eu',
     title: 'Запрещено в ЕС',
     kind: 'watch',
+    weight: { rinse: 3, leave: 3 },
     note: 'Butylphenyl Methylpropional (Lilial) запрещён с 2022 года. Если встретился — средство старое или несертифицированное.',
     exact: ['butylphenyl methylpropional', 'lilial'],
   },
@@ -182,6 +217,7 @@ export const GROUPS: Group[] = [
     id: 'essential-oil',
     title: 'Эфирные масла',
     kind: 'watch',
+    weight: { rinse: 1, leave: 3 },
     note: 'Частые источники контактной аллергии. Для зон с высокой реактивностью — повод насторожиться.',
     test: (k) =>
       /\boil$/.test(k) && ESSENTIAL_OIL_GENERA.some((g) => k.startsWith(g)),
@@ -191,6 +227,7 @@ export const GROUPS: Group[] = [
     id: 'isothiazolinone',
     title: 'Изотиазолиноны',
     kind: 'watch',
+    weight: { rinse: 2, leave: 3 },
     note: 'Заметные контактные аллергены. В ЕС запрещены в несмываемой косметике, в смываемой разрешены с ограничением. Имеет смысл считать, во скольких средствах сразу они встречаются.',
     test: (k) => k.includes('isothiazolinone'),
   },
@@ -198,6 +235,7 @@ export const GROUPS: Group[] = [
     id: 'formaldehyde-releaser',
     title: 'Доноры формальдегида',
     kind: 'watch',
+    weight: { rinse: 2, leave: 3 },
     exact: [
       'dmdm hydantoin', 'imidazolidinyl urea', 'diazolidinyl urea',
       'quaternium-15', 'sodium hydroxymethylglycinate', 'bronopol',
@@ -221,6 +259,7 @@ export const GROUPS: Group[] = [
     title: 'Протеины',
     kind: 'watch',
     zones: ['hair'],
+    weight: { rinse: 3, leave: 2 },
     note: 'При ежедневном мытье накапливаются и делают волос жёстче, а жёсткий волос хуже складывается в завиток. Для кожи значения не имеют.',
     exact: ['keratin amino acids', 'keratin', 'silk amino acids'],
     test: (k) => k.startsWith('hydrolyzed') || /белк|протеин/.test(k),
@@ -230,6 +269,7 @@ export const GROUPS: Group[] = [
     id: 'moisturizing',
     title: 'Увлажняющее направление',
     kind: 'good',
+    weight: { rinse: 0, leave: 3 },
     note: 'Удерживают воду и смягчают роговой слой.',
     exact: [
       'urea', 'glycerin', 'panthenol', 'sodium pca', 'betaine', 'sorbitol',
@@ -242,6 +282,7 @@ export const GROUPS: Group[] = [
     id: 'keratolytic',
     title: 'Кератолитическое направление',
     kind: 'good',
+    weight: { rinse: 1, leave: 3 },
     note: 'Снимают уже образовавшиеся роговые пробки. При гиперкератозе обычно обсуждают связку с увлажняющим направлением, а не что-то одно.',
     exact: [
       'lactic acid', 'ammonium lactate', 'glycolic acid', 'salicylic acid',
@@ -253,6 +294,7 @@ export const GROUPS: Group[] = [
     title: 'Против красноты и раздражения',
     kind: 'good',
     zones: ['face'],
+    weight: { rinse: 1, leave: 3 },
     exact: [
       'azelaic acid', 'niacinamide', 'panthenol', 'bisabolol', 'allantoin',
       'madecassoside', 'centella asiatica extract', 'centella asiatica leaf extract',
@@ -263,6 +305,7 @@ export const GROUPS: Group[] = [
     id: 'uv-filter',
     title: 'Солнцезащитные фильтры',
     kind: 'neutral',
+    weight: { rinse: 0, leave: 1 },
     exact: [
       'ethylhexyl methoxycinnamate', 'octocrylene', 'octyl triazone',
       'ethylhexyl triazone', 'bis-ethylhexyloxyphenol methoxyphenyl triazine',

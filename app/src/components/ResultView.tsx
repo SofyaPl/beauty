@@ -1,12 +1,13 @@
 import { FLAG_LABEL, isTrace, type Analysis, type FlagMark } from '../lib/analyze'
 
 export function ResultView({ result }: { result: Analysis }) {
-  const { parse, hits, flags, unmatched, level, headline } = result
+  const { parse, hits, flags, unmatched, level, headline, comparison } = result
   const otherZones = hits.filter((h) => !h.relevantToZone)
+  const otherForm = hits.filter((h) => h.relevantToZone && !h.relevantToForm)
 
   return (
     <>
-      <section className="card verdict" data-level={level}>
+      <section className="card verdict" data-level={level} data-cmp={comparison?.kind}>
         <h2>{headline}</h2>
         {level === 'unclear' && parse.listWarnings.length > 0 && (
           <ul className="plain">
@@ -16,6 +17,31 @@ export function ResultView({ result }: { result: Analysis }) {
           </ul>
         )}
       </section>
+
+      {comparison && (
+        <section className="card">
+          <h3>Сравнение с текущим</h3>
+          {comparison.lost.length === 0 &&
+          comparison.gained.length === 0 &&
+          comparison.plusGained.length === 0 ? (
+            <p className="note" style={{ margin: 0 }}>
+              По словарю те же группы, что у «{comparison.against}».
+            </p>
+          ) : (
+            <ul className="plain">
+              {comparison.lost.map((line) => (
+                <li key={`l-${line}`}>Ушло: {line}</li>
+              ))}
+              {comparison.gained.map((line) => (
+                <li key={`g-${line}`}>Появилось: {line}</li>
+              ))}
+              {comparison.plusGained.map((line) => (
+                <li key={`p-${line}`}>В плюс появилось: {line}</li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {flags.length > 0 && (
         <section className="card">
@@ -56,6 +82,20 @@ export function ResultView({ result }: { result: Analysis }) {
             ))}
           </ul>
         </div>
+      )}
+
+      {otherForm.length > 0 && (
+        <section className="card">
+          <h3>Для этой формы (смываемое / нет) не важно</h3>
+          <ul className="plain">
+            {otherForm.map((h) => (
+              <li key={h.group.id}>
+                <span className="group-title">{h.group.title}</span>
+                <div className="items">{h.items.map((i) => i.display).join(', ')}</div>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {otherZones.length > 0 && (

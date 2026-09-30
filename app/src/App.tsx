@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { ZONE_ORDER, ZONES, type Zone } from './data/dictionary'
+import { FORM_ORDER, FORMS, ZONE_ORDER, ZONES, type Form, type Zone } from './data/dictionary'
 import { analyze, type Analysis } from './lib/analyze'
 import { initStorage, isDiskConnected, saveData } from './lib/storage'
-import { emptyData, type AppData } from './lib/types'
+import { emptyData, inferForm, type AppData } from './lib/types'
 import { ResultView } from './components/ResultView'
 import { Settings } from './components/Settings'
 import { Shelf } from './components/Shelf'
@@ -12,6 +12,8 @@ const ZONE_IDS = ZONE_ORDER
 export default function App() {
   const [tab, setTab] = useState<'check' | 'shelf' | 'settings'>('shelf')
   const [zone, setZone] = useState<Zone>('body')
+  const [form, setForm] = useState<Form>('rinse')
+  const [compareId, setCompareId] = useState('')
   const [input, setInput] = useState('')
   const [result, setResult] = useState<Analysis | null>(null)
   const [data, setData] = useState<AppData>(emptyData)
@@ -30,7 +32,27 @@ export default function App() {
     if (loaded) void saveData(data)
   }, [data, loaded])
 
-  const check = () => setResult(analyze(input, zone, data.profile))
+  const peers = data.products.filter(
+    (p) => p.era !== 'past' && p.zone === zone && inferForm(p) === form && p.inci.trim(),
+  )
+
+  useEffect(() => {
+    setCompareId((id) => {
+      if (peers.some((p) => p.id === id)) return id
+      const prefer = peers.find((p) => p.status === 'replace') ?? peers[0]
+      return prefer?.id ?? ''
+    })
+  }, [zone, form, data.products])
+
+  const check = () =>
+    setResult(
+      analyze(input, {
+        zone,
+        form,
+        profile: data.profile,
+        baseline: peers.find((p) => p.id === compareId),
+      }),
+    )
 
   const pasteFromClipboard = async () => {
     try {
@@ -117,6 +139,50 @@ export default function App() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="field">
+              <label className="block">Смывается или остаётся</label>
+              <div className="zones">
+                {FORM_ORDER.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    className="zone"
+                    aria-pressed={form === f}
+                    onClick={() => setForm(f)}
+                  >
+                    {FORMS[f]}
+                  </button>
+                ))}
+              </div>
+              <p className="note">
+                Мыло и крем для тела — не одно и то же. Умывалка и крем для лица тоже.
+              </p>
+            </div>
+
+            <div className="field">
+              <label className="block" htmlFor="compare">
+                Сравнить с тем, чем пользуюсь сейчас
+              </label>
+              <select
+                id="compare"
+                value={compareId}
+                onChange={(e) => setCompareId(e.target.value)}
+              >
+                <option value="">Не сравнивать</option>
+                {peers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              {peers.length === 0 && (
+                <p className="note">
+                  На полке нет текущего средства с этой зоной и формой — сравнение появится, когда
+                  добавишь.
+                </p>
+              )}
             </div>
 
             <div className="field">

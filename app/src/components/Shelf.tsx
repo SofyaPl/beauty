@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { ZONE_ORDER, ZONES, type Zone } from '../data/dictionary'
+import { FORM_ORDER, FORMS, ZONE_ORDER, ZONES, type Form, type Zone } from '../data/dictionary'
 import {
   ERA_LABEL,
   STATUS_LABEL,
+  inferForm,
   type AppData,
   type Product,
   type ProductEra,
@@ -28,7 +29,7 @@ function Card({
       <button type="button" className="product-head" onClick={() => setOpen((v) => !v)}>
         <span className="product-name">{product.name}</span>
         <span className="product-meta">
-          {ZONES[product.zone]}
+          {ZONES[product.zone]} · {FORMS[inferForm(product)]}
           {product.category ? ` · ${product.category}` : ''}
         </span>
         <span className="status-pill" data-status={product.status}>
@@ -59,6 +60,7 @@ function Card({
 function AddForm({ onAdd }: { onAdd: (p: Product) => void }) {
   const [name, setName] = useState('')
   const [zone, setZone] = useState<Zone>('body')
+  const [form, setForm] = useState<Form>('leave')
   const [era, setEra] = useState<ProductEra>('now')
   const [status, setStatus] = useState<ProductStatus>('neutral')
   const [inci, setInci] = useState('')
@@ -69,6 +71,7 @@ function AddForm({ onAdd }: { onAdd: (p: Product) => void }) {
       id: crypto.randomUUID(),
       name: name.trim(),
       zone,
+      form,
       era,
       status,
       inci: inci.trim(),
@@ -99,6 +102,22 @@ function AddForm({ onAdd }: { onAdd: (p: Product) => void }) {
               onClick={() => setZone(z)}
             >
               {ZONES[z]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <label className="block">Смывается или остаётся</label>
+        <div className="zones">
+          {FORM_ORDER.map((f) => (
+            <button
+              key={f}
+              type="button"
+              className="zone"
+              aria-pressed={form === f}
+              onClick={() => setForm(f)}
+            >
+              {FORMS[f]}
             </button>
           ))}
         </div>

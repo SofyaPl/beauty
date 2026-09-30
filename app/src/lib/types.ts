@@ -104,9 +104,16 @@ export function isAppData(value: unknown): value is AppData {
 
 /** Старые выгрузки без поля era считаем текущей полкой. */
 export function inferForm(product: Product): Form {
-  if (product.form === 'rinse' || product.form === 'leave') return product.form
   const blob = `${product.category ?? ''} ${product.name}`.toLowerCase()
-  if (/мыл|шампун|умыв|очищен|пудр|гель для душа|синдет/.test(blob)) return 'rinse'
+  // Сначала по роли средства: бальзам смывают, как шампунь.
+  if (
+    /мыл|шампун|умыв|очищен|пудр|гель для душа|синдет|бальзам|кондиционер|ополаскив|хна|окраш/.test(
+      blob,
+    )
+  ) {
+    return 'rinse'
+  }
+  if (product.form === 'rinse' || product.form === 'leave') return product.form
   return 'leave'
 }
 

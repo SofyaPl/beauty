@@ -12,7 +12,7 @@ const ZONE_IDS = ZONE_ORDER
 export default function App() {
   const [tab, setTab] = useState<'check' | 'shelf' | 'settings'>('shelf')
   const [zone, setZone] = useState<Zone>('body')
-  const [form, setForm] = useState<Form>('rinse')
+  const [form, setForm] = useState<Form>('leave')
   const [compareId, setCompareId] = useState('')
   const [input, setInput] = useState('')
   const [result, setResult] = useState<Analysis | null>(null)
@@ -32,27 +32,34 @@ export default function App() {
     if (loaded) void saveData(data)
   }, [data, loaded])
 
-  const peers = data.products.filter(
-    (p) => p.era !== 'past' && p.zone === zone && inferForm(p) === form && p.inci.trim(),
+  const zoneProducts = data.products.filter(
+    (p) => p.era !== 'past' && p.zone === zone && p.inci.trim(),
   )
 
   useEffect(() => {
-    setCompareId((id) => {
-      if (peers.some((p) => p.id === id)) return id
-      const prefer = peers.find((p) => p.status === 'replace') ?? peers[0]
-      return prefer?.id ?? ''
-    })
-  }, [zone, form, data.products])
+    const inZone = data.products.filter(
+      (p) => p.era !== 'past' && p.zone === zone && p.inci.trim(),
+    )
+    const rinseN = inZone.filter((p) => inferForm(p) === 'rinse').length
+    const leaveN = inZone.length - rinseN
+    const nextForm: Form = leaveN >= rinseN ? 'leave' : 'rinse'
+    setForm(nextForm)
+    const sameForm = inZone.filter((p) => inferForm(p) === nextForm)
+    const prefer = sameForm.find((p) => p.status === 'replace') ?? sameForm[0] ?? inZone[0]
+    setCompareId(prefer?.id ?? '')
+  }, [zone, data.products])
 
-  const check = () =>
+  const check = () => {
+    const baseline = zoneProducts.find((p) => p.id === compareId)
     setResult(
       analyze(input, {
         zone,
-        form,
+        form: baseline ? inferForm(baseline) : form,
         profile: data.profile,
-        baseline: peers.find((p) => p.id === compareId),
+        baseline,
       }),
     )
+  }
 
   const pasteFromClipboard = async () => {
     try {
@@ -150,7 +157,13 @@ export default function App() {
                     type="button"
                     className="zone"
                     aria-pressed={form === f}
-                    onClick={() => setForm(f)}
+                    onClick={() => {
+                      setForm(f)
+                      const list = zoneProducts.filter((p) => inferForm(p) === f)
+                      setCompareId((id) =>
+                        list.some((p) => p.id === id) ? id : (list[0]?.id ?? ''),
+                      )
+                    }}
                   >
                     {FORMS[f]}
                   </button>
@@ -168,20 +181,32 @@ export default function App() {
               <select
                 id="compare"
                 value={compareId}
-                onChange={(e) => setCompareId(e.target.value)}
+                onChange={(e) => {
+                  const id = e.target.value
+                  setCompareId(id)
+                  const picked = zoneProducts.find((p) => p.id === id)
+                  if (picked) setForm(inferForm(picked))
+                }}
               >
                 <option value="">Не сравнивать</option>
-                {peers.map((p) => (
+                {zoneProducts.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name}
+                    {p.name} — {FORMS[inferForm(p)].toLowerCase()}
                   </option>
                 ))}
               </select>
-              {peers.length === 0 && (
+              <p className="note">
+                В списке все текущие средства этой зоны. Если выбрать бальзам, форма
+                станет смываемой; если крем — несмываемой.
+              </p>
+              {zone === 'feet' && (
                 <p className="note">
-                  На полке нет текущего средства с этой зоной и формой — сравнение появится, когда
-                  добавишь.
+                  MEDLINE «крем для ног» стоит в зоне Тело: это голени и руки, не
+                  подошвы. Для ступней здесь EpilProfi и НАНОПЯТКИ.
                 </p>
+              )}
+              {zoneProducts.length === 0 && (
+                <p className="note">На полке пока нет средств с этой зоной.</p>
               )}
             </div>
 

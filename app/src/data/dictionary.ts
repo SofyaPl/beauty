@@ -122,7 +122,7 @@ export const GROUPS: Group[] = [
     note: 'Сульфосукцинаты, изетионаты и глюкозиды содержат в названии «sulf» или похожи на ПАВ, но к сульфатам не относятся.',
     exact: [
       'sodium cocoyl isethionate', 'sodium lauroyl methyl isethionate',
-      'coco-glucoside', 'decyl glucoside', 'lauryl glucoside', 'caprylyl glucoside',
+      'coco-glucoside', 'coco glucoside', 'decyl glucoside', 'lauryl glucoside', 'caprylyl glucoside',
       'cocamidopropyl betaine', 'cocamidopropyl hydroxysultaine',
       'disodium cocoamphodiacetate', 'sodium lauroamphoacetate',
       'sodium lauroyl sarcosinate', 'sodium cocoyl glutamate',
@@ -261,7 +261,10 @@ export const GROUPS: Group[] = [
     zones: ['hair'],
     weight: { rinse: 3, leave: 2 },
     note: 'При ежедневном мытье накапливаются и делают волос жёстче, а жёсткий волос хуже складывается в завиток. Для кожи значения не имеют.',
-    exact: ['keratin amino acids', 'keratin', 'silk amino acids'],
+    exact: [
+      'keratin amino acids', 'keratin', 'silk amino acids',
+      'triticum vulgare protein', 'wheat protein',
+    ],
     test: (k) => k.startsWith('hydrolyzed') || /белк|протеин/.test(k),
   },
 
